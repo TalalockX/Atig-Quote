@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Atig Quotation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Atig Quotation</h1>
+    <p>Scan an item label (or search the item list) to add it to the quotation, then edit qty and discount. <a class="sheetLink" target="_blank" rel="noopener" hidden>Open Google Sheet</a></p>
+  </div>
+
+  <div class="grid">
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-scan">
+        <h2 id="h-scan">Scan</h2>
+        <div class="viewfinder" id="vf">
+          <video id="video" playsinline muted hidden></video>
+          <div class="frame" id="frame" hidden></div>
+          <div class="msg" id="vfmsg">Camera is off. Start the camera, or take a photo of a label.</div>
+        </div>
+        <div class="row">
+          <button class="primary" id="camBtn" type="button">Start camera</button>
+          <button id="photoBtn" type="button">Scan from photo</button>
+        </div>
+        <input id="photoIn" type="file" accept="image/*" hidden>
+        <form class="paste" id="pasteForm">
+          <input id="searchIn" type="search" aria-label="Search items or enter a serial" placeholder="اسم الصنف أو الباركود / Item name or serial" autocomplete="off" spellcheck="false">
+          <button type="submit">Add</button>
+        </form>
+        <div id="searchOut"></div>
+        <p class="hint">Scan a label with the camera, or type an item name or serial above. Tap a result to add it, or press Add to add the first one.</p>
+        <p class="hint" id="engine">Checking scanner…</p>
+      </section>
+      <section class="panel" aria-labelledby="h-upd">
+        <h2 id="h-upd">Update items / تحديث الأصناف</h2>
+        <input id="itemsFile" type="file" accept=".xlsx,.xls,.csv" aria-label="Excel file of items">
+        <p class="hint" id="itemsInfo"></p>
+        <p class="hint" id="itemsMsg" role="status">Choose the Excel file with the columns الباركود، الصنف، سعر البيع، العدد.</p>
+        <div class="actions"><button class="primary" id="itemsApply" type="button" hidden>Apply</button><button id="itemsCancel" type="button" hidden>Cancel</button></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-conn">
+        <h2 id="h-conn">Connect Google Sheet</h2>
+        <div class="row">
+          <label class="f">Apps Script web app URL<input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false"></label>
+          <label class="f">Secret<input id="cfgKey" type="password" autocomplete="off" spellcheck="false"></label>
+          <label class="f">Tablet name<input id="cfgName" autocomplete="off"></label>
+          <label class="f">Google Sheet link (filled in automatically once connected)<input id="cfgSheet" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off" spellcheck="false"></label>
+        </div>
+        <div class="actions">
+          <button class="primary" id="cfgSave" type="button">Save settings</button>
+          <button id="cfgTest" type="button">Test connection</button>
+        </div>
+        <p class="hint" id="cfgState" role="status"></p>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel" aria-labelledby="h-quote">
+        <h2 id="h-quote">Quotation <span class="badge" id="status">Draft</span></h2>
+        <div class="qhead">
+          <label class="f">رقم العرض / Quote no<input id="qid" readonly></label>
+          <label class="f">العميل / Customer<input id="cust" placeholder="Customer name" autocomplete="off"></label>
+          <label class="f">الفرع / Branch<select id="branch" aria-label="Branch"><option value="">Select</option><option>001</option><option>002</option><option>003</option><option>004</option><option>RU</option></select></label>
+          <label class="f">التاريخ / Date<input id="qdate" readonly></label>
+        </div>
+        <div class="qhead">
+          <label class="f">رقم العميل / Customer no<input id="custNo" placeholder="CU00000" autocomplete="off"></label>
+          <label class="f">الرقم الضريبي / VAT Number<input id="custVat" inputmode="numeric" autocomplete="off"></label>
+          <label class="f">رقم الجوال (اختياري) / Mobile number (optional)<input id="custPhone" type="tel" inputmode="tel" autocomplete="off"></label>
+          <label class="f">البلد - المدينة / Country - City<input id="custCity" placeholder="" autocomplete="off"></label>
+        </div>
+        <div class="qhead">
+          <label class="f">رقم المستند / Doc no<input id="docNo" autocomplete="off"></label>
+          <label class="f">ملاحظات / Notes<input id="notes" autocomplete="off"></label>
+          <label class="f">مدة صلاحية العرض (أيام) / Validity (days)<input id="validity" inputmode="numeric" autocomplete="off"></label>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Item</th><th class="num">Price</th><th>Qty</th><th class="num">Disc %</th><th class="num">Total</th><th><span class="sr" style="position:absolute;left:-9999px">Remove</span></th></tr></thead>
+            <tbody id="lines"></tbody>
+          </table>
+          <div class="empty" id="empty">No items yet. Scan a label or search for an item.</div>
+        </div>
+        <div class="totals" id="totals"></div>
+        <div class="opts">
+          <label><input type="checkbox" id="vatOn" checked> Add VAT 15%</label>        </div>
+        <div class="actions">
+          <button id="saveBtn" type="button">Save draft</button>
+          <button class="primary" id="finBtn" type="button">Finalize</button>
+          <button id="pdfBtn" type="button">Print / PDF</button>
+          <button id="newBtn" type="button">New quotation</button>
+          <button class="danger" id="delBtn" type="button">Delete quotation</button>
+        </div>
+        <div class="confirm" id="delConfirm" role="alert" hidden>
+          <span id="delMsg"></span>
+          <button class="solid-danger" id="delYes" type="button">Delete</button>
+          <button id="delNo" type="button">Cancel</button>
+        </div>
+        <p class="hint" id="syncState" role="status"></p>
+        <p class="hint" id="quoteLinks" hidden><a id="lnkTab" target="_blank" rel="noopener">Open this quotation's tab</a></p>
+      </section>
+
+      <section class="panel" aria-labelledby="h-saved" id="savedPanel" hidden>
+        <h2 id="h-saved">Saved quotations</h2>
+        <div class="saved" id="saved"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="h-sheet">
+        <h2 id="h-sheet">What the Google Sheet receives</h2>
+        <p><a class="sheetLink linkbtn" target="_blank" rel="noopener" hidden>Open Google Sheet ↗</a></p>
+        <div class="sheets">
+          <div><h3>Quotations (index)</h3><div class="tablewrap"><table id="tQuotes"></table></div></div>
+          <div><h3 id="tabTitle">This quotation's tab</h3><div class="tabinfo" id="tabInfo"></div><div class="tablewrap"><table id="tLines"></table></div><div class="tabtotals" id="tTotals"></div></div>
+        </div>
+        <p class="hint">Each quotation gets its own tab in the Sheet, named by its number, with its details, items and totals. The Quotations tab is the index. These tables update as you edit.</p>
+      </section>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<div id="printSheet" aria-hidden="true"></div>
+<script src="items.js"></script>
+<script src="qrtag.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
